@@ -1,0 +1,80 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SETU Interoperability Gateway API",
+    "version": "1.0.0",
+    "description": "Academic Prototype API Specification for SETU Unified Government Service Gateway & Application Tracking in India."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Citizen / Admin Login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": { "type": "string", "example": "citizen@setu.gov.in" },
+                  "password": { "type": "string", "example": "Password123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login success with JWT token" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/services": {
+      "get": {
+        "summary": "Get Services Catalog",
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of 12+ government services with connector labels" }
+        }
+      }
+    },
+    "/applications": {
+      "post": {
+        "summary": "Submit Application via SETU Gateway",
+        "description": "Requires active consent record and idempotency key.",
+        "responses": {
+          "201": { "description": "Application submitted & canonical status normalized" },
+          "403": { "description": "GATEWAY_CONSENT_REQUIRED if consent missing or revoked" }
+        }
+      }
+    },
+    "/applications/track": {
+      "get": {
+        "summary": "Public Application Reference Tracking",
+        "parameters": [
+          { "name": "ref", "in": "query", "required": true, "schema": { "type": "string", "example": "SETU-ED-2026-00045" } }
+        ],
+        "responses": {
+          "200": { "description": "Timeline & live status" }
+        }
+      }
+    },
+    "/admin/connectors/health": {
+      "get": {
+        "summary": "Interoperability Gateway Health Monitor",
+        "responses": {
+          "200": { "description": "Connector health status, latency, and success metrics" }
+        }
+      }
+    }
+  }
+}

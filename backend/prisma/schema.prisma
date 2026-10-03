@@ -1,0 +1,209 @@
+// Prisma Schema for SETU Academic Prototype Interoperability Gateway
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id       String            @id @default(uuid())
+  email         String            @unique
+  mobile_number String            @unique
+  password_hash String
+  role          String            @default("CITIZEN") // CITIZEN, ADMIN, PROVIDER
+  is_active     Boolean           @default(true)
+  created_at    DateTime          @default(now())
+  updated_at    DateTime          @updatedAt
+
+  profile       CitizenProfile?
+  documents     Document[]
+  applications  ServiceApplication[]
+  consents      ConsentRecord[]
+  notifications Notification[]
+  grievances    Grievance[]
+
+  @@map("users")
+}
+
+model CitizenProfile {
+  profile_id        String   @id @default(uuid())
+  user_id           String   @unique
+  user              User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  full_name         String
+  dob               String   // YYYY-MM-DD
+  gender            String   @default("General")
+  demo_address      String
+  district          String
+  state             String
+  prototype_cit_id  String   @unique // SETU-CIT-XXXXXX
+  annual_income     Float    @default(150000)
+  category          String   @default("BC")
+  college_attendance Float   @default(85.0)
+  version           Int      @default(1)
+  updated_at        DateTime @updatedAt
+
+  @@map("citizen_profiles")
+}
+
+model Document {
+  document_id         String   @id @default(uuid())
+  user_id             String
+  user                User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  type                String   // INCOME_CERTIFICATE, MARKS_MEMO, RESIDENCE_PROOF, RATION_CARD
+  storage_uri         String
+  checksum            String
+  verification_status String   @default("VERIFIED") // VERIFIED, PENDING, REJECTED
+  expiry              String?
+  created_at          DateTime @default(now())
+
+  @@map("documents")
+}
+
+model APIRegistry {
+  api_registry_id   String          @id @default(uuid())
+  service_name      String
+  base_url          String
+  docs_url          String
+  protocol          String          @default("REST") // REST, SOAP_XML
+  auth_type         String          @default("API_KEY") // API_KEY, OAUTH2, NONE
+  access_class      String          @default("RESTRICTED") // OPEN, RESTRICTED, PARTNER
+  data_class        String          @default("CANONICAL_JSON")
+  health            String          @default("HEALTHY") // HEALTHY, DEGRADED, UNHEALTHY
+  last_success_at   DateTime?
+  simulate_failure  Boolean         @default(false)
+  
+  services          GovernmentService[]
+  transactions      APITransaction[]
+
+  @@map("api_registries")
+}
+
+model GovernmentService {
+  service_id        String          @id @default(uuid())
+  code              String          @unique
+  name              String
+  provider          String
+  category          String          // Citizen Certificates, Education & Scholarships, etc.
+  integration_type  String          // MOCK_SIMULATION, PUBLIC_OPEN_DATA, OFFICIAL_SANDBOX, PARTNER_ONLY, REDIRECT_ONLY
+  state             String          @default("Central/State Neutral")
+  required_documents String         // Comma separated list or JSON string
+  description       String
+  api_registry_id   String?
+  api_registry      APIRegistry?    @relation(fields: [api_registry_id], references: [api_registry_id])
+  created_at        DateTime        @default(now())
+
+  applications      ServiceApplication[]
+  consents          ConsentRecord[]
+
+  @@map("government_services")
+}
+
+model ConsentRecord {
+  consent_id            String          @id @default(uuid())
+  user_id               String
+  user                  User            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  recipient_service_id  String
+  service               GovernmentService @relation(fields: [recipient_service_id], references: [service_id], onDelete: Cascade)
+  purpose               String
+  requested_fields      String          // JSON string of fields e.g. ["name", "dob", "annual_income"]
+  status                String          @default("GRANTED") // GRANTED, DENIED, REVOKED, EXPIRED
+  expires_at            DateTime
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  applications          ServiceApplication[]
+
+  @@map("consent_records")
+}
+
+model ServiceApplication {
+  application_id   String            @id @default(uuid())
+  user_id          String
+  user             User              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  service_id       String
+  service          GovernmentService @relation(fields: [service_id], references: [service_id], onDelete: Cascade)
+  external_ref     String            @unique // e.g. SETU-ED-2026-00045
+  canonical_status String            @default("SUBMITTED") // DRAFT, SUBMITTED, UNDER_REVIEW, ACTION_REQUIRED, APPROVED, REJECTED, COMPLETED, FAILED_SYNC, CANCELLED
+  consent_id       String?
+  consent          ConsentRecord?    @relation(fields: [consent_id], references: [consent_id])
+  idempotency_key  String            @unique
+  form_data        String            // JSON string of submitted fields
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+
+  statuses         ApplicationStatus[]
+
+  @@map("service_applications")
+}
+
+model ApplicationStatus {
+  status_id        String             @id @default(uuid())
+  application_id   String
+  application      ServiceApplication @relation(fields: [application_id], references: [application_id], onDelete: Cascade)
+  canonical_status String
+  provider_status  String
+  source           String
+  message          String
+  created_at       DateTime           @default(now())
+
+  @@map("application_statuses")
+}
+
+model APITransaction {
+  transaction_id        String      @id @default(uuid())
+  trace_id              String
+  api_registry_id       String?
+  api_registry          APIRegistry? @relation(fields: [api_registry_id], references: [api_registry_id])
+  redacted_request_hash String
+  response_status       Int
+  latency_ms            Int
+  outcome               String      // SUCCESS, FAILURE, TIMEOUT, GATEWAY_REJECTED
+  created_at            DateTime    @default(now())
+
+  @@map("api_transactions")
+}
+
+model AuditLog {
+  audit_id          String   @id @default(uuid())
+  actor             String   // e.g. citizen:user_id or system
+  action            String   // CONSENT_GRANTED, CONSENT_REVOKED, APPLICATION_SUBMITTED, etc.
+  resource          String
+  trace_id          String
+  redacted_metadata String   // JSON string
+  timestamp         DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  notification_id String   @id @default(uuid())
+  user_id         String
+  user            User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  type            String   // INFO, SUCCESS, WARNING, ALERT
+  title           String
+  message         String
+  is_read         Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model Grievance {
+  grievance_id  String   @id @default(uuid())
+  user_id       String
+  user          User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department    String
+  subject       String
+  description   String
+  district_area String
+  urgency       String   // NORMAL, URGENT, CRITICAL
+  status        String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  reference_no  String   @unique // GRV-2026-XXXXX
+  created_at    DateTime @default(now())
+
+  @@map("grievances")
+}

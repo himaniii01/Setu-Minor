@@ -1,0 +1,55 @@
+{
+  "info": {
+    "name": "SETU Interoperability Gateway API Collection",
+    "description": "Postman/Bruno API Collection for testing SETU Academic Prototype Endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Citizen Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"identifier\": \"citizen@setu.gov.in\",\n  \"password\": \"Password123!\"\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/v1/auth/login", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "v1", "auth", "login"] }
+      }
+    },
+    {
+      "name": "2. Get Services Directory",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:5000/api/v1/services", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "v1", "services"] }
+      }
+    },
+    {
+      "name": "3. Check Eligibility",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category\": \"BC\",\n  \"annual_income\": 180000,\n  \"college_attendance\": 85\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/v1/eligibility/check", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "v1", "eligibility", "check"] }
+      }
+    },
+    {
+      "name": "4. Track Application by Ref",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:5000/api/v1/applications/track?ref=SETU-ED-2026-00045", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "v1", "applications", "track"], "query": [{ "key": "ref", "value": "SETU-ED-2026-00045" }] }
+      }
+    },
+    {
+      "name": "5. Admin Health Metrics",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{ADMIN_JWT_TOKEN}}" }],
+        "url": { "raw": "http://localhost:5000/api/v1/admin/connectors/health", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "v1", "admin", "connectors", "health"] }
+      }
+    }
+  ]
+}

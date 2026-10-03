@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "schemes": "Schemes",
+    "track": "Track Application",
+    "grievances": "Grievances",
+    "help": "Help",
+    "login": "Citizen Login",
+    "dashboard": "Dashboard",
+    "myProfile": "My Profile",
+    "consents": "Consent Records",
+    "vault": "Document Vault",
+    "documents": "Document Organizer",
+    "admin": "Admin Gateway"
+  },
+  "tagline": "Citizens - Services - Connected",
+  "hero": {
+    "welcome": "Welcome to",
+    "title": "SETU",
+    "sub": "Your gateway to unified government services, one consent at a time.",
+    "searchPlaceholder": "Search for services, schemes or departments...",
+    "searchBtn": "Search"
+  },
+  "quickTiles": {
+    "certificates": "Get Certificates",
+    "certificatesSub": "Income, Caste, Residence, etc.",
+    "schemes": "Apply for Schemes",
+    "schemesSub": "Welfare & Benefits",
+    "departments": "Department Services",
+    "departmentsSub": "Access Departmental Services",
+    "track": "Track Application",
+    "trackSub": "Check Status"
+  },
+  "banner": "Academic prototype - not an official government platform. Do not enter real Aadhaar, OTPs, passwords, bank details or real documents.",
+  "buttons": {
+    "verifyEligibility": "Check Eligibility",
+    "applyNow": "Apply Now",
+    "trackStatus": "Track Status",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "revoke": "Revoke Consent",
+    "next": "Next >",
+    "back": "< Back"
+  }
+}

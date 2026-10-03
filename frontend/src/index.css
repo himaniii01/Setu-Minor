@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+
+@layer base {
+  body {
+    @apply bg-[#F5F8FC] text-[#475569] antialiased;
+  }
+}
+
+/* Prajaseva Custom Animations & Micro-interactions */
+.nav-link {
+  @apply relative py-1 text-[#0F1F3D] font-medium text-[15px] hover:text-[#0B2A5B] transition-colors duration-200;
+}
+
+.nav-link.active {
+  @apply text-[#0B2A5B] font-semibold;
+}
+
+.nav-link.active::after {
+  content: '';
+  @apply absolute bottom-0 left-0 w-full h-[2px] bg-[#0B2A5B] rounded-full;
+}
+
+.card-hover {
+  @apply transition-all duration-200 hover:-translate-y-1 hover:shadow-lift;
+}
+
+/* Modal Overlay Blur */
+.modal-backdrop {
+  @apply fixed inset-0 bg-[#0F1F3D]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F8FC;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
