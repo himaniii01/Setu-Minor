@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { useAuth, useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 interface DocumentRecord {
@@ -19,9 +20,9 @@ interface DocumentRecord {
   category: 'IDENTITY' | 'INCOME' | 'EDUCATION' | 'TRANSPORT' | 'HOUSING' | 'HEALTH';
   doc_number?: string;
 }
-
 export const DocumentVault: React.FC = () => {
   const { i18n } = useTranslation();
+  const { user } = useAuth();
   const isHindi = i18n.language === 'hi';
   const { showToast } = useToast();
 
@@ -225,10 +226,16 @@ export const DocumentVault: React.FC = () => {
 
   useEffect(() => {
     fetchDocs();
-  }, [activeTab]);
+  }, [activeTab, user]);
 
   const fetchDocs = async () => {
     setLoading(true);
+    if (!user) {
+  setDocuments([]);
+  setDigiDocs([]);
+  setLoading(false);
+  return;
+}
     try {
       if (activeTab === 'organizer') {
         const res = await api.get('/documents');
@@ -340,6 +347,23 @@ Notice: Official digital government document reference copy.
                         (doc.doc_number && doc.doc_number.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchCat && matchSearch;
   });
+  if (!user) {
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+      <div className="flex justify-center mb-4">
+        <Lock className="w-12 h-12 text-slate-400" />
+      </div>
+
+      <h2 className="text-2xl font-bold text-slate-800">
+        Login Required
+      </h2>
+
+      <p className="mt-2 text-slate-500">
+        Please login to access your private document vault.
+      </p>
+    </div>
+  );
+}
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fadeIn">
