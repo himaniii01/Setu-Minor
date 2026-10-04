@@ -210,7 +210,7 @@ export const ApplyStepper: React.FC = () => {
   const [fullName, setFullName] = useState<string>('');
   const [dob, setDob] = useState<string>('1995-08-15');
   const [mobileNumber, setMobileNumber] = useState<string>('');
-  const [email, setEmail] = useState<string>('rajesh123@gmail.com');
+  const [email, setEmail] = useState<string>('rajeshkumar@gmail.com');
   const [category, setCategory] = useState<string>('BC');
   const [annualIncome, setAnnualIncome] = useState<string>('140000');
   
@@ -335,7 +335,7 @@ export const ApplyStepper: React.FC = () => {
         setFullName(user.profile?.full_name || 'Rajesh Kumar');
         setDob(user.profile?.dob || '1995-08-15');
         setMobileNumber(user.mobile_number || '9876543210');
-        setEmail(user.email || 'rajesh123@gmail.com');
+        setEmail(user.email || 'rajeshkumar@gmail.com');
         setCategory(user.profile?.category || 'BC');
         setAnnualIncome(String(user.profile?.annual_income || 140000));
 

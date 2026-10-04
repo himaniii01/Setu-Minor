@@ -13,7 +13,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
 
   // Form State
-  const [identifier, setIdentifier] = useState<string>('rajesh123@gmail.com');
+  const [identifier, setIdentifier] = useState<string>('rajeshkumar@gmail.com');
   const [password, setPassword] = useState<string>('Password123!');
   const [fullName, setFullName] = useState<string>('');
   const [mobileNumber, setMobileNumber] = useState<string>('');
@@ -64,8 +64,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         if (res.data.ekyc_data) {
           setFullName(res.data.ekyc_data.full_name || 'Rajesh Kumar');
           setMobileNumber('9876543210');
-          if (!identifier || identifier === 'rajesh123@gmail.com') {
-            setIdentifier('rajesh123@gmail.com');
+          if (!identifier || identifier === 'rajeshkumar@gmail.com') {
+            setIdentifier('rajeshkumar@gmail.com');
           }
         }
       }
@@ -84,7 +84,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     try {
       if (isRegisterMode) {
         await register({
-          email: identifier || 'rajesh123@gmail.com',
+          email: identifier || 'rajeshkumar@gmail.com',
           mobile_number: mobileNumber || `9${Math.floor(100000000 + Math.random() * 900000000)}`,
           password,
           full_name: fullName || 'Rajesh Kumar',
@@ -102,7 +102,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   };
 
   const fillDemoCitizen = () => {
-    setIdentifier('rajesh123@gmail.com');
+    setIdentifier('rajeshkumar@gmail.com');
     setPassword('Password123!');
     setIsRegisterMode(false);
     setErrorMsg('');
@@ -287,7 +287,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. rajesh123@gmail.com"
+                placeholder="e.g. rajeshkumar@gmail.com"
                 required
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-[#08234D] outline-none"
               />
@@ -346,7 +346,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               </button>
               <button
                 type="button"
-                onClick={() => alert('Demo prototype credentials: rajesh123@gmail.com / Password123!')}
+                onClick={() => alert('Demo prototype credentials: rajeshkumar@gmail.com / Password123!')}
                 className="text-slate-400 hover:underline cursor-pointer"
               >
                 Need help?

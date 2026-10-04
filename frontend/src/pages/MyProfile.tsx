@@ -9,7 +9,7 @@ export const MyProfile: React.FC = () => {
   const { showToast } = useToast();
 
   const [fullName, setFullName] = useState<string>(user?.profile?.full_name || 'Rajesh Kumar');
-  const [email, setEmail] = useState<string>(user?.email || 'rajesh123@gmail.com');
+  const [email, setEmail] = useState<string>(user?.email || 'rajeshkumar@gmail.com');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile_number || '9876543210');
   const [dob, setDob] = useState<string>(user?.profile?.dob || '1995-08-15');
   const [gender, setGender] = useState<string>(user?.profile?.gender || 'Male');

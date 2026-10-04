@@ -246,7 +246,7 @@ const MOCK_SERVICES: GovernmentService[] = [
 
 const MOCK_USER: User = {
   user_id: 'u-rajesh-101',
-  email: 'rajesh123@gmail.com',
+  email: 'rajeshkumar@gmail.com',
   mobile_number: '9876543210',
   role: 'CITIZEN',
   profile: {
