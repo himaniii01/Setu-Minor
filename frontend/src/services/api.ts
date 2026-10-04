@@ -304,11 +304,11 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
   }
 ];
 
-// Smart Fallback Interceptor for Live Vercel/Static Deployments
+// Fallback Interceptor for Offline/Network-only failures on Public Catalog
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // If request fails (Network error / 404 on Vercel deployment), intercept and provide mock fallback response
+    // If request fails due to 401 Unauthorized, remove invalid/expired token so user can log in again
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('setu_token');
     }
@@ -317,10 +317,9 @@ api.interceptors.response.use(
     const url: string = config.url || '';
     const method: string = (config.method || 'get').toLowerCase();
 
-    console.warn(`[SETU Gateway Fallback] Request to ${url} failed. Activating live fail-safe mock layer.`);
-
-    // 1. GET /services
-    if (url.includes('/services') && method === 'get') {
+    // Fallback ONLY for public services catalog if live server is waking up or offline
+    if (url.includes('/services') && method === 'get' && (!error.response || error.response.status >= 500 || error.code === 'ERR_NETWORK')) {
+      console.warn(`[SETU Gateway Fallback] Public services catalog offline fallback activated for ${url}`);
       const params = config.params || {};
       let filtered = [...MOCK_SERVICES];
       if (params.category && params.category !== 'ALL') {
@@ -334,134 +333,7 @@ api.interceptors.response.use(
       return Promise.resolve({ data: { services: filtered } });
     }
 
-    // 2. POST /auth/login
-    if (url.includes('/auth/login') && method === 'post') {
-      let reqData: any = {};
-      try { reqData = JSON.parse(config.data || '{}'); } catch (e) {}
-      const loginUser = {
-        ...MOCK_USER,
-        email: reqData.identifier || MOCK_USER.email,
-        profile: {
-          ...MOCK_USER.profile!,
-          full_name: reqData.identifier?.includes('@') ? (reqData.identifier.split('@')[0].toUpperCase()) : MOCK_USER.profile!.full_name
-        }
-      };
-      const demoToken = `setu_jwt_demo_${Date.now()}`;
-      localStorage.setItem('setu_token', demoToken);
-      localStorage.setItem('setu_user_data', JSON.stringify(loginUser));
-      return Promise.resolve({
-        data: {
-          message: 'Login successful (Live Gateway Fallback)',
-          token: demoToken,
-          user: loginUser
-        }
-      });
-    }
-
-    // 3. POST /auth/register
-    if (url.includes('/auth/register') && method === 'post') {
-      let reqData: any = {};
-      try { reqData = JSON.parse(config.data || '{}'); } catch (e) {}
-      const regUser = {
-        ...MOCK_USER,
-        user_id: `u-reg-${Date.now()}`,
-        email: reqData.email || MOCK_USER.email,
-        mobile_number: reqData.mobile_number || '9876543210',
-        profile: {
-          ...MOCK_USER.profile!,
-          full_name: reqData.full_name || 'Aditya Sharma',
-          dob: reqData.dob || '1996-01-01'
-        }
-      };
-      const demoToken = `setu_jwt_demo_${Date.now()}`;
-      localStorage.setItem('setu_token', demoToken);
-      localStorage.setItem('setu_user_data', JSON.stringify(regUser));
-      return Promise.resolve({
-        data: {
-          message: 'Account registered successfully',
-          token: demoToken,
-          user: regUser
-        }
-      });
-    }
-
-    // 4. GET /auth/me
-    if (url.includes('/auth/me') && method === 'get') {
-      const saved = localStorage.getItem('setu_user_data');
-      const user = saved ? JSON.parse(saved) : MOCK_USER;
-      return Promise.resolve({ data: { user } });
-    }
-
-    // 5. GET /documents
-    if (url.includes('/documents') && method === 'get') {
-      return Promise.resolve({ data: { documents: MOCK_DOCUMENTS } });
-    }
-
-    // 6. POST /applications
-    if (url.includes('/applications') && method === 'post') {
-      const refNo = `MP-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-      return Promise.resolve({
-        data: {
-          message: 'Application submitted successfully',
-          application: {
-            application_id: `app-${Date.now()}`,
-            external_ref: refNo,
-            canonical_status: 'SUBMITTED',
-            created_at: new Date().toISOString()
-          }
-        }
-      });
-    }
-
-    // 7. GET /applications
-    if (url.includes('/applications') && method === 'get') {
-      return Promise.resolve({
-        data: {
-          applications: [
-            {
-              application_id: 'app-demo-1',
-              external_ref: 'MP-2026-981240',
-              canonical_status: 'UNDER_REVIEW',
-              created_at: new Date().toISOString(),
-              service: MOCK_SERVICES[0]
-            }
-          ]
-        }
-      });
-    }
-
-    // 8. POST /grievances
-    if (url.includes('/grievances') && method === 'post') {
-      return Promise.resolve({
-        data: {
-          message: 'Grievance lodged successfully',
-          grievance: {
-            grievance_id: `grv-${Date.now()}`,
-            reference_no: `SETU-GRV-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-            status: 'PENDING'
-          }
-        }
-      });
-    }
-
-    // 9. GET /consents
-    if (url.includes('/consents') && method === 'get') {
-      return Promise.resolve({
-        data: {
-          consents: [
-            {
-              consent_id: 'con-101',
-              recipient_service_id: 'svc-001',
-              purpose: 'Mukhyamantri Ladli Behna Yojana e-KYC Verification',
-              status: 'GRANTED',
-              created_at: new Date().toISOString(),
-              service: MOCK_SERVICES[0]
-            }
-          ]
-        }
-      });
-    }
-
+    // Pass through real API errors for authentication, consents, documents, and applications
     return Promise.reject(error);
   }
 );

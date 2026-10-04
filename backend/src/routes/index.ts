@@ -50,6 +50,7 @@ router.post('/consents/:id/revoke', authenticateToken, consentCtrl.revokeConsent
 router.post('/applications', authenticateToken, appCtrl.submitApplication);
 router.get('/applications', authenticateToken, appCtrl.getApplications);
 router.get('/applications/track', appCtrl.trackByReference);
+router.get('/applications/track/:ref', appCtrl.trackByReference);
 router.get('/applications/:id', authenticateToken, appCtrl.getApplicationById);
 router.post('/applications/:id/refresh-status', authenticateToken, appCtrl.refreshStatus);
 

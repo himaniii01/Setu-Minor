@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendStandardError } from '../utils/helpers';
 import { logAuditEvent } from '../middlewares/auditMiddleware';
@@ -8,8 +8,6 @@ import {
   submitScholarshipApplication,
   submitMunicipalBirthRegistration
 } from '../connectors';
-
-const prisma = new PrismaClient();
 
 export const submitApplication = async (req: AuthRequest, res: Response) => {
   try {
@@ -268,6 +266,15 @@ export const refreshStatus = async (req: AuthRequest, res: Response) => {
 
     if (!application) {
       return sendStandardError(res, 404, 'NOT_FOUND', 'Application not found');
+    }
+
+    // Terminal state check
+    const terminalStates = ['APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED'];
+    if (terminalStates.includes(application.canonical_status)) {
+      return res.json({
+        message: `Application is already in terminal state (${application.canonical_status}). No status update required.`,
+        application
+      });
     }
 
     // Advance status from SUBMITTED -> UNDER_REVIEW -> APPROVED

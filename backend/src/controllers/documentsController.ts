@@ -1,11 +1,9 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendStandardError } from '../utils/helpers';
 import { logAuditEvent } from '../middlewares/auditMiddleware';
 import { fetchDigiLockerMockDocuments } from '../connectors';
-
-const prisma = new PrismaClient();
 
 export const getDocuments = async (req: AuthRequest, res: Response) => {
   try {

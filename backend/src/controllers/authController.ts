@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import prisma from '../utils/prisma';
 import { sendStandardError } from '../utils/helpers';
 import { logAuditEvent } from '../middlewares/auditMiddleware';
 import { AuthRequest } from '../middlewares/authMiddleware';
 
-const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'setu_secret_jwt_key_2026_academic_prototype';
 
 export const register = async (req: Request, res: Response) => {
@@ -17,9 +16,12 @@ export const register = async (req: Request, res: Response) => {
       return sendStandardError(res, 400, 'VALIDATION_ERROR', 'Missing required registration fields');
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanMobile = mobile_number.trim();
+
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email }, { mobile_number }]
+        OR: [{ email: cleanEmail }, { mobile_number: cleanMobile }]
       }
     });
 
@@ -32,8 +34,8 @@ export const register = async (req: Request, res: Response) => {
 
     const user = await prisma.user.create({
       data: {
-        email,
-        mobile_number,
+        email: cleanEmail,
+        mobile_number: cleanMobile,
         password_hash,
         role: 'CITIZEN',
         profile: {
@@ -61,7 +63,7 @@ export const register = async (req: Request, res: Response) => {
 
     const traceId = (res.getHeader('X-Trace-Id') as string) || 'tr-reg';
     await logAuditEvent(`user:${user.user_id}`, 'USER_REGISTERED', 'user', traceId, {
-      email,
+      email: cleanEmail,
       prototype_cit_id
     });
 
@@ -101,12 +103,19 @@ export const login = async (req: Request, res: Response) => {
       include: { profile: true }
     });
 
-    // Fallback search if citizen email has typo like rajeshkumar123 or citizen@setu.gov.in
-    if (!user && (cleanId.includes('rajesh') || cleanId.includes('citizen'))) {
-      user = await prisma.user.findFirst({
-        where: { role: 'CITIZEN' },
-        include: { profile: true }
-      });
+    // Fallback search for demo users if exact email/mobile match was not found
+    if (!user) {
+      if (cleanId === 'admin' || cleanId.includes('admin@setu')) {
+        user = await prisma.user.findFirst({
+          where: { role: 'ADMIN' },
+          include: { profile: true }
+        });
+      } else if (cleanId.includes('rajesh') || cleanId.includes('citizen')) {
+        user = await prisma.user.findFirst({
+          where: { role: 'CITIZEN' },
+          include: { profile: true }
+        });
+      }
     }
 
     if (!user) {

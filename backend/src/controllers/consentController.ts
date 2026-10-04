@@ -1,10 +1,8 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendStandardError } from '../utils/helpers';
 import { logAuditEvent } from '../middlewares/auditMiddleware';
-
-const prisma = new PrismaClient();
 
 export const grantConsent = async (req: AuthRequest, res: Response) => {
   try {

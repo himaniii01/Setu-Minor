@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { sendStandardError } from '../utils/helpers';
 import { fetchPublicOpenDataCatalog } from '../connectors';
-
-const prisma = new PrismaClient();
 
 export const getAllServices = async (req: Request, res: Response) => {
   try {
@@ -13,11 +11,12 @@ export const getAllServices = async (req: Request, res: Response) => {
     if (category) where.category = category as string;
     if (state) where.state = state as string;
     if (search) {
+      const q = search as string;
       where.OR = [
-        { name: { contains: search as string } },
-        { code: { contains: search as string } },
-        { provider: { contains: search as string } },
-        { description: { contains: search as string } }
+        { name: { contains: q } },
+        { code: { contains: q } },
+        { provider: { contains: q } },
+        { description: { contains: q } }
       ];
     }
 

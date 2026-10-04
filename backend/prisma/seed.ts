@@ -26,7 +26,7 @@ async function main() {
   // 1. Create Users
   const citizen1 = await prisma.user.create({
     data: {
-      email: 'rajesh123@gmail.com',
+      email: 'rajeshkumar@gmail.com',
       mobile_number: '9876543210',
       password_hash: passwordHash,
       role: 'CITIZEN',
@@ -50,7 +50,7 @@ async function main() {
 
   const citizen2 = await prisma.user.create({
     data: {
-      email: 'sunita@setu.gov.in',
+      email: 'sunitadevi@setu.gov.in',
       mobile_number: '9812345678',
       password_hash: passwordHash,
       role: 'CITIZEN',
@@ -535,7 +535,7 @@ async function main() {
 main()
   .catch((e) => {
     console.error('❌ Seeding failed:', e);
-    process.exit(1);
+    (globalThis as any).process?.exit?.(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
