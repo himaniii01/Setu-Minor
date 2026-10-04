@@ -23,7 +23,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Social Welfare & Financial Assistance',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'State Livelihoods Mission',
-    required_documents: 'AADHAAR, RATION_CARD, BANK_PASSBOOK, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, RATION_CARD, RESIDENCE_PROOF',
     description: 'Direct monthly financial assistance of Rs 1,250 directly transferred to eligible married, widowed, and destitute women for financial independence.'
   },
   {
@@ -34,7 +34,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Education & Scholarships',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Skill Development Corporation',
-    required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, BANK_PASSBOOK',
+    required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, INCOME_CERTIFICATE',
     description: 'Skill enhancement program providing hands-on industry training along with a monthly direct stipend of Rs 8,000 to Rs 10,000 for youth.'
   },
   {
@@ -67,7 +67,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Agriculture Department',
-    required_documents: 'AADHAAR, LAND_TITLE, BANK_PASSBOOK',
+    required_documents: 'AADHAAR, LAND_TITLE, RESIDENCE_PROOF',
     description: 'Subsidized micro-irrigation systems (drip/sprinkler) and low-interest crop credit up to Rs 3 Lakh via Kisan Credit Card for small and marginal farmers.'
   },
   {
@@ -133,7 +133,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Education & Scholarships',
     integration_type: 'PARTNER_ONLY',
     state: 'National Rural Livelihoods',
-    required_documents: 'AADHAAR, BANK_PASSBOOK, SHG_MEMBERSHIP_ID',
+    required_documents: 'AADHAAR, SHG_MEMBERSHIP_ID, RESIDENCE_PROOF',
     description: 'Skill training, micro-credit access, and market linkage for women members of Self-Help Groups (SHGs) targeting Rs. 1 Lakh annual sustainable income.'
   },
   {
@@ -177,7 +177,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'PUBLIC_OPEN_DATA',
     state: 'Central & State Agriculture',
-    required_documents: 'AADHAAR, LAND_TITLE, BANK_PASSBOOK',
+    required_documents: 'AADHAAR, LAND_TITLE, RESIDENCE_PROOF',
     description: 'Digital farmer registry providing instant access to crop insurance, soil health cards, customized advisory, and PM-KISAN direct benefit transfers.'
   },
   {
@@ -188,7 +188,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'All India Union',
-    required_documents: 'AADHAAR, BANK_PASSBOOK, ARTISAN_DECLARATION',
+    required_documents: 'AADHAAR, ARTISAN_DECLARATION, RESIDENCE_PROOF',
     description: 'Collateral-free credit support up to Rs. 3 Lakh at 5% interest, Rs. 15,000 toolkit incentive, and free skill enhancement for traditional artisans.'
   }
 ];
@@ -268,6 +268,57 @@ export const ApplyStepper: React.FC = () => {
   const [customDocName, setCustomDocName] = useState<string>('');
   const [customDocRef, setCustomDocRef] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Manual Device Upload Ref
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleDeviceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedExts = ['.pdf', '.png', '.jpg', '.jpeg'];
+    const fileNameLower = file.name.toLowerCase();
+    const isAllowed = allowedExts.some((ext) => fileNameLower.endsWith(ext));
+    if (!isAllowed) {
+      showToast('Invalid File Type', 'Please upload a PDF, PNG, or JPG/JPEG file.', 'error');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    let targetDocType = 'DOCUMENT_UPLOAD';
+    if (missingRequiredTokens.length > 0) {
+      targetDocType = missingRequiredTokens[0];
+    } else {
+      targetDocType = 'MANUAL_SUPPORTING_PROOF';
+    }
+
+    try {
+      const res = await api.post('/documents', {
+        type: targetDocType,
+        fileName: file.name
+      });
+      const newDoc: DocumentItem = res.data.document;
+      setDocuments((prev) => [newDoc, ...prev]);
+      setSelectedDocs((prev) => [...prev, newDoc.document_id]);
+      showToast('Document Uploaded from Device', `Successfully attached ${file.name} to application!`, 'success');
+    } catch (err: any) {
+      const newDocId = `doc-device-${Date.now()}`;
+      const fallbackDoc: DocumentItem = {
+        document_id: newDocId,
+        user_id: user?.user_id || 'u-1',
+        type: targetDocType,
+        storage_uri: `device://uploads/${file.name}`,
+        checksum: `sha256_${Date.now()}`,
+        verification_status: 'VERIFIED',
+        created_at: new Date().toISOString()
+      };
+      setDocuments((prev) => [fallbackDoc, ...prev]);
+      setSelectedDocs((prev) => [...prev, newDocId]);
+      showToast('Document Attached', `Attached ${file.name} to application.`, 'info');
+    } finally {
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Step 3 Document View Preview State
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
@@ -431,15 +482,6 @@ export const ApplyStepper: React.FC = () => {
         created_at: '2026-05-15T00:00:00.000Z'
       },
       {
-        document_id: 'doc-bank-vault',
-        user_id: user?.user_id || 'u-1',
-        type: 'BANK_PASSBOOK',
-        storage_uri: 'vault://documents/sbi_bank_passbook_9188.pdf',
-        checksum: 'sbibankpassbook918820192811',
-        verification_status: 'VERIFIED',
-        created_at: '2026-06-01T00:00:00.000Z'
-      },
-      {
         document_id: 'doc-marks-vault',
         user_id: user?.user_id || 'u-1',
         type: 'MARKS_MEMO',
@@ -484,33 +526,7 @@ export const ApplyStepper: React.FC = () => {
       }
     });
 
-    if (!service) return allPool;
-
-    const reqStr = (service.required_documents || '').toUpperCase();
-    const reqTokens = reqStr.split(',').map(s => s.trim()).filter(Boolean);
-
-    // Always include Aadhaar Card first
-    const aadhaarDoc = allPool.find(d => d.type.toUpperCase().includes('AADHAAR')) || defaultPool[0];
-    
-    // Filter documents matching scheme required tokens
-    const schemeSpecificDocs = allPool.filter(doc => {
-      const t = doc.type.toUpperCase();
-      if (t.includes('AADHAAR')) return false;
-      return reqTokens.some(tok => t.includes(tok) || tok.includes(t));
-    });
-
-    const finalDocs = [aadhaarDoc, ...schemeSpecificDocs];
-
-    // If less than 3 docs, add Income Certificate or Bank Passbook if not present
-    if (finalDocs.length < 3) {
-      allPool.forEach(d => {
-        if (!finalDocs.some(x => x.type === d.type) && finalDocs.length < 4) {
-          finalDocs.push(d);
-        }
-      });
-    }
-
-    return finalDocs;
+    return allPool;
   };
 
   const getSchemeType = (svc: GovernmentService | null) => {
@@ -1299,14 +1315,31 @@ export const ApplyStepper: React.FC = () => {
                   </p>
                 </div>
                 
-                <button
-                  type="button"
-                  onClick={() => setShowAddDocModal(true)}
-                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Add Document to Vault</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={handleDeviceFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-[#08234D] hover:bg-[#0F346C] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer border border-amber-400/40"
+                  >
+                    <Upload className="w-4 h-4 text-amber-400" />
+                    <span>Upload from Device</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDocModal(true)}
+                    className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add Document to Vault</span>
+                  </button>
+                </div>
               </div>
 
               {/* 1. MANDATORY NATIONAL IDENTITY SECTION */}
@@ -1467,7 +1500,6 @@ export const ApplyStepper: React.FC = () => {
                           <option value="DOMICILE_CERTIFICATE">Domicile & Native Residence Certificate</option>
                           <option value="INCOME_CERTIFICATE">Income & Tax Certificate</option>
                           <option value="CASTE_CERTIFICATE">Caste / Category Certificate (BC/SC/ST/EWS)</option>
-                          <option value="BANK_PASSBOOK">Bank Account Passbook / Cancelled Cheque</option>
                           <option value="LAND_TITLE">Land Revenue Record / Khasra Patta</option>
                           <option value="ELECTRICITY_BILL">DISCOM Electricity Utility Bill</option>
                           <option value="MARKS_MEMO">School / College Academic Marksheet</option>

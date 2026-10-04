@@ -30,7 +30,7 @@ const MOCK_SERVICES: GovernmentService[] = [
     category: 'Social Welfare & Financial Assistance',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'State Livelihoods Mission',
-    required_documents: 'AADHAAR, RATION_CARD, BANK_PASSBOOK, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, RATION_CARD, RESIDENCE_PROOF',
     description: 'Direct monthly financial assistance of Rs 1,250 directly transferred to eligible married, widowed, and destitute women for financial independence.'
   },
   {
@@ -41,7 +41,7 @@ const MOCK_SERVICES: GovernmentService[] = [
     category: 'Education & Scholarships',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Skill Development Corporation',
-    required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, BANK_PASSBOOK',
+    required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, INCOME_CERTIFICATE',
     description: 'Skill enhancement program providing hands-on industry training along with a monthly direct stipend of Rs 8,000 to Rs 10,000 for youth.'
   },
   {
@@ -74,7 +74,7 @@ const MOCK_SERVICES: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Agriculture Department',
-    required_documents: 'AADHAAR, LAND_TITLE, BANK_PASSBOOK',
+    required_documents: 'AADHAAR, LAND_TITLE, RESIDENCE_PROOF',
     description: 'Subsidized micro-irrigation systems (drip/sprinkler) and low-interest crop credit up to Rs 3 Lakh via Kisan Credit Card for small and marginal farmers.'
   },
   {
@@ -118,7 +118,7 @@ const MOCK_SERVICES: GovernmentService[] = [
     category: 'Employment & MSME Support',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Central Government',
-    required_documents: 'AADHAAR, BANK_PASSBOOK, RATION_CARD',
+    required_documents: 'AADHAAR, RATION_CARD, RESIDENCE_PROOF',
     description: 'Empowers rural women in Self-Help Groups (SHGs) with micro-credit loans, financial literacy, and market access to earn Rs 1 Lakh+ annually.'
   },
   {
@@ -173,7 +173,7 @@ const MOCK_SERVICES: GovernmentService[] = [
     category: 'Employment & MSME Support',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Central Government',
-    required_documents: 'AADHAAR, BANK_PASSBOOK, TRADE_CERTIFICATE',
+    required_documents: 'AADHAAR, TRADE_CERTIFICATE, RESIDENCE_PROOF',
     description: 'End-to-end support for traditional artisans (18 trades) including 5-day skill training, Rs 15,000 toolkit e-voucher, and Rs 3 Lakh loan at 5% interest.'
   },
   {
@@ -228,7 +228,7 @@ const MOCK_SERVICES: GovernmentService[] = [
     category: 'Education & Scholarships',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Higher Education Department',
-    required_documents: 'AADHAAR, MARKS_MEMO, INCOME_CERTIFICATE, BANK_PASSBOOK',
+    required_documents: 'AADHAAR, MARKS_MEMO, INCOME_CERTIFICATE, RESIDENCE_PROOF',
     description: 'Full tuition fee reimbursement and monthly maintenance allowance for eligible SC/ST/OBC/EWS students pursuing higher education.'
   },
   {
@@ -292,15 +292,6 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
     checksum: 'sha256_ration_card_family_verified',
     verification_status: 'VERIFIED',
     created_at: '2026-02-14T00:00:00.000Z'
-  },
-  {
-    document_id: 'doc-passbook-1',
-    user_id: 'u-rajesh-101',
-    type: 'BANK_PASSBOOK',
-    storage_uri: 'vault://documents/sbi_passbook_9188.pdf',
-    checksum: 'sha256_sbi_passbook_9188_verified',
-    verification_status: 'VERIFIED',
-    created_at: '2026-06-01T00:00:00.000Z'
   }
 ];
 
