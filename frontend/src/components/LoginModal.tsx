@@ -166,28 +166,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Quick Fill Pills */}
-        <div className="px-6 pt-3 flex items-center justify-between gap-2 shrink-0">
-          <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Quick Demo:</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={fillDemoCitizen}
-              className="text-[11px] font-extrabold bg-amber-100 hover:bg-amber-200 text-amber-950 px-3 py-1 rounded-full border border-amber-300 transition-colors cursor-pointer"
-            >
-              Demo Citizen (Rajesh)
-            </button>
-            <button
-              type="button"
-              onClick={fillDemoAdmin}
-              className="text-[11px] font-extrabold bg-blue-100 hover:bg-blue-200 text-blue-950 px-3 py-1 rounded-full border border-blue-300 transition-colors cursor-pointer"
-            >
-              Demo Admin
-            </button>
-          </div>
-        </div>
+      
 
-        {/* Scrollable Form Body */}
+       {/* Scrollable Form Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-4">
 
           {errorMsg && (
