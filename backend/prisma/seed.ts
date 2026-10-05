@@ -229,7 +229,7 @@ async function main() {
       category: 'Education & Scholarships',
       integration_type: 'PARTNER_ONLY',
       state: 'National Rural Livelihoods',
-      required_documents: 'SHG_MEMBERSHIP_ID, INCOME_CERTIFICATE',
+      required_documents: 'SHG_MEMBERSHIP_ID, BANK_PASSBOOK',
       description: 'Skill training, micro-credit access, and market linkage for women members of Self-Help Groups (SHGs) targeting Rs. 1 Lakh annual sustainable income.',
       api_registry_id: edistrictApi.api_registry_id
     },
@@ -284,7 +284,7 @@ async function main() {
       category: 'Agriculture & Farmers Welfare',
       integration_type: 'OFFICIAL_SANDBOX',
       state: 'All India Union',
-      required_documents: 'ARTISAN_DECLARATION, RESIDENCE_PROOF',
+      required_documents: 'ARTISAN_DECLARATION, BANK_PASSBOOK',
       description: 'Collateral-free credit support up to Rs. 3 Lakh at 5% interest, Rs. 15,000 toolkit incentive, and free skill enhancement for traditional artisans.',
       api_registry_id: edistrictApi.api_registry_id
     },
@@ -339,7 +339,7 @@ async function main() {
       category: 'Social Welfare & Financial Assistance',
       integration_type: 'OFFICIAL_SANDBOX',
       state: 'State Livelihoods Mission',
-      required_documents: 'AADHAAR, RATION_CARD, RESIDENCE_PROOF',
+      required_documents: 'AADHAAR, RATION_CARD, BANK_PASSBOOK, RESIDENCE_PROOF',
       description: 'Direct monthly financial assistance of Rs 1,250 directly transferred to eligible married, widowed, and destitute women for financial independence.',
       api_registry_id: edistrictApi.api_registry_id
     },
@@ -350,7 +350,7 @@ async function main() {
       category: 'Education & Scholarships',
       integration_type: 'OFFICIAL_SANDBOX',
       state: 'Skill Development Corporation',
-      required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, INCOME_CERTIFICATE',
+      required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, BANK_PASSBOOK',
       description: 'Skill enhancement program providing hands-on industry training along with a monthly direct stipend of Rs 8,000 to Rs 10,000 for youth.',
       api_registry_id: scholarshipApi.api_registry_id
     },
@@ -383,7 +383,7 @@ async function main() {
       category: 'Agriculture & Farmers Welfare',
       integration_type: 'OFFICIAL_SANDBOX',
       state: 'Agriculture Department',
-      required_documents: 'AADHAAR, LAND_TITLE, RESIDENCE_PROOF',
+      required_documents: 'AADHAAR, LAND_TITLE, BANK_PASSBOOK',
       description: 'Subsidized micro-irrigation systems (drip/sprinkler) and low-interest crop credit up to Rs 3 Lakh via Kisan Credit Card for small and marginal farmers.',
       api_registry_id: pmsuryaApi.api_registry_id
     },

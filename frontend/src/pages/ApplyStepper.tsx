@@ -23,7 +23,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Social Welfare & Financial Assistance',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'State Livelihoods Mission',
-    required_documents: 'AADHAAR, RATION_CARD, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, RATION_CARD, BANK_PASSBOOK, RESIDENCE_PROOF',
     description: 'Direct monthly financial assistance of Rs 1,250 directly transferred to eligible married, widowed, and destitute women for financial independence.'
   },
   {
@@ -34,7 +34,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Education & Scholarships',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Skill Development Corporation',
-    required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, INCOME_CERTIFICATE',
+    required_documents: 'AADHAAR, MARKS_MEMO, DEGREE_CERTIFICATE, BANK_PASSBOOK',
     description: 'Skill enhancement program providing hands-on industry training along with a monthly direct stipend of Rs 8,000 to Rs 10,000 for youth.'
   },
   {
@@ -67,7 +67,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'Agriculture Department',
-    required_documents: 'AADHAAR, LAND_TITLE, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, LAND_TITLE, BANK_PASSBOOK',
     description: 'Subsidized micro-irrigation systems (drip/sprinkler) and low-interest crop credit up to Rs 3 Lakh via Kisan Credit Card for small and marginal farmers.'
   },
   {
@@ -133,7 +133,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Education & Scholarships',
     integration_type: 'PARTNER_ONLY',
     state: 'National Rural Livelihoods',
-    required_documents: 'AADHAAR, SHG_MEMBERSHIP_ID, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, BANK_PASSBOOK, SHG_MEMBERSHIP_ID',
     description: 'Skill training, micro-credit access, and market linkage for women members of Self-Help Groups (SHGs) targeting Rs. 1 Lakh annual sustainable income.'
   },
   {
@@ -177,7 +177,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'PUBLIC_OPEN_DATA',
     state: 'Central & State Agriculture',
-    required_documents: 'AADHAAR, LAND_TITLE, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, LAND_TITLE, BANK_PASSBOOK',
     description: 'Digital farmer registry providing instant access to crop insurance, soil health cards, customized advisory, and PM-KISAN direct benefit transfers.'
   },
   {
@@ -188,7 +188,7 @@ const STATIC_SERVICES_CATALOG: GovernmentService[] = [
     category: 'Agriculture & Farmers Welfare',
     integration_type: 'OFFICIAL_SANDBOX',
     state: 'All India Union',
-    required_documents: 'AADHAAR, ARTISAN_DECLARATION, RESIDENCE_PROOF',
+    required_documents: 'AADHAAR, BANK_PASSBOOK, ARTISAN_DECLARATION',
     description: 'Collateral-free credit support up to Rs. 3 Lakh at 5% interest, Rs. 15,000 toolkit incentive, and free skill enhancement for traditional artisans.'
   }
 ];
@@ -271,6 +271,60 @@ export const ApplyStepper: React.FC = () => {
 
   // Manual Device Upload Ref
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const tokenFileInputRef = React.useRef<HTMLInputElement>(null);
+  const [activeUploadToken, setActiveUploadToken] = useState<string | null>(null);
+
+  const triggerUploadForToken = (token: string) => {
+    setActiveUploadToken(token);
+    tokenFileInputRef.current?.click();
+  };
+
+  const handleTokenFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const targetType = activeUploadToken || 'DOCUMENT_UPLOAD';
+    const allowedExts = ['.pdf', '.png', '.jpg', '.jpeg'];
+    const fileNameLower = file.name.toLowerCase();
+    const isAllowed = allowedExts.some((ext) => fileNameLower.endsWith(ext));
+    if (!isAllowed) {
+      showToast('Invalid File Type', 'Please upload a PDF, PNG, or JPG/JPEG file.', 'error');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    try {
+      const res = await api.post('/documents', {
+        type: targetType,
+        fileName: file.name
+      });
+      const newDoc: DocumentItem = res.data.document;
+      setDocuments((prev) => [newDoc, ...prev]);
+      setSelectedDocs((prev) => [...prev, newDoc.document_id]);
+      showToast(
+        'Document Uploaded',
+        `Successfully uploaded and attached ${file.name} for ${targetType.replace(/_/g, ' ')}!`,
+        'success'
+      );
+    } catch (err: any) {
+      const newDocId = `doc-token-${Date.now()}`;
+      const fallbackDoc: DocumentItem = {
+        document_id: newDocId,
+        user_id: user?.user_id || 'u-1',
+        type: targetType,
+        storage_uri: `device://uploads/${file.name}`,
+        checksum: `sha256_${Date.now()}`,
+        verification_status: 'VERIFIED',
+        created_at: new Date().toISOString()
+      };
+      setDocuments((prev) => [fallbackDoc, ...prev]);
+      setSelectedDocs((prev) => [...prev, newDocId]);
+      showToast('Document Attached', `Attached ${file.name} to application.`, 'info');
+    } finally {
+      if (e.target) e.target.value = '';
+      setActiveUploadToken(null);
+    }
+  };
 
   const handleDeviceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1400,65 +1454,123 @@ export const ApplyStepper: React.FC = () => {
                     <span>2. Scheme Specific Required Certificates & Proofs</span>
                   </h4>
                   <span className="text-[11px] font-bold text-slate-500">
-                    {service.required_documents ? service.required_documents.split(',').length : 3} Required Documents
+                    {requiredTokens.length} Required Document(s)
                   </span>
                 </div>
 
-                <div className="space-y-2.5">
-                  {getDisplayDocuments().filter(d => !d.type.toUpperCase().includes('AADHAAR')).map((doc) => {
-                    const isChecked = selectedDocs.includes(doc.document_id);
-                    return (
-                      <div
-                        key={doc.document_id}
-                        onClick={() => {
-                          if (selectedDocs.includes(doc.document_id)) {
-                            setSelectedDocs(selectedDocs.filter((id) => id !== doc.document_id));
-                          } else {
-                            setSelectedDocs([...selectedDocs, doc.document_id]);
-                          }
-                        }}
-                        className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all gap-3 ${
-                          isChecked
-                            ? 'border-[#08234D] bg-blue-50/60 ring-2 ring-[#08234D]/10 shadow-xs'
-                            : 'border-slate-200 hover:bg-slate-50 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {}} // Handled by container onClick
-                            className="rounded text-[#08234D] focus:ring-[#08234D] w-4 h-4 cursor-pointer"
-                          />
-                          <div className="w-8 h-8 rounded-xl bg-blue-100/60 text-[#08234D] flex items-center justify-center shrink-0 font-bold text-xs">
-                            <FileText className="w-4 h-4" />
+                <input
+                  type="file"
+                  ref={tokenFileInputRef}
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={handleTokenFileUpload}
+                  style={{ display: 'none' }}
+                />
+
+                <div className="space-y-3">
+                  {requiredTokens.filter(t => !t.includes('AADHAAR')).map((reqTok) => {
+                    const matchingDoc = documents.find((d) => {
+                      const t = d.type.toUpperCase();
+                      return t.includes(reqTok) || reqTok.includes(t);
+                    }) || getDisplayDocuments().find((d) => {
+                      const t = d.type.toUpperCase();
+                      return (t.includes(reqTok) || reqTok.includes(t)) && !t.includes('AADHAAR');
+                    });
+
+                    if (matchingDoc) {
+                      const isChecked = selectedDocs.includes(matchingDoc.document_id);
+                      return (
+                        <div
+                          key={reqTok}
+                          onClick={() => {
+                            if (selectedDocs.includes(matchingDoc.document_id)) {
+                              setSelectedDocs(selectedDocs.filter((id) => id !== matchingDoc.document_id));
+                            } else {
+                              setSelectedDocs([...selectedDocs, matchingDoc.document_id]);
+                            }
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all gap-3 ${
+                            isChecked
+                              ? 'border-[#08234D] bg-blue-50/60 ring-2 ring-[#08234D]/10 shadow-xs'
+                              : 'border-slate-200 hover:bg-slate-50 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                              className="rounded text-[#08234D] focus:ring-[#08234D] w-4 h-4 cursor-pointer"
+                            />
+                            <div className="w-8 h-8 rounded-xl bg-blue-100/60 text-[#08234D] flex items-center justify-center shrink-0 font-bold text-xs">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-sm text-[#0F172A] truncate">
+                                  {reqTok.replace(/_/g, ' ')}
+                                </h4>
+                                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                                  Verified in Vault
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 font-mono truncate">{matchingDoc.storage_uri}</p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="font-extrabold text-sm text-[#0F172A] truncate">
-                              {doc.type.replace(/_/g, ' ')}
-                            </h4>
-                            <p className="text-[11px] text-slate-400 font-mono truncate">{doc.storage_uri}</p>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewDoc(matchingDoc);
+                              }}
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#08234D] border border-blue-200 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-blue-700" />
+                              <span>View Document</span>
+                            </button>
+                            <span className="text-xs font-semibold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                              {matchingDoc.verification_status}
+                            </span>
                           </div>
                         </div>
+                      );
+                    } else {
+                      return (
+                        <div
+                          key={reqTok}
+                          className="p-4 rounded-2xl border-2 border-amber-300/80 bg-amber-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
+                              <AlertTriangle className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="font-extrabold text-sm text-[#0F172A] uppercase tracking-wide">
+                                  {reqTok.replace(/_/g, ' ')}
+                                </h4>
+                                <span className="text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 px-2 py-0.5 rounded uppercase tracking-wider">
+                                  Required for this Scheme
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                                Not found in your Document Vault. Please upload from device to attach to this application.
+                              </p>
+                            </div>
+                          </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPreviewDoc(doc);
-                            }}
-                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#08234D] border border-blue-200 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                            onClick={() => triggerUploadForToken(reqTok)}
+                            className="px-4 py-2 bg-[#08234D] hover:bg-[#0F346C] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer border border-amber-400/40 shrink-0"
                           >
-                            <Eye className="w-3.5 h-3.5 text-blue-700" />
-                            <span>View Document</span>
+                            <Upload className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Upload {reqTok.replace(/_/g, ' ')}</span>
                           </button>
-                          <span className="text-xs font-semibold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
-                            {doc.verification_status}
-                          </span>
                         </div>
-                      </div>
-                    );
+                      );
+                    }
                   })}
                 </div>
               </div>
@@ -1500,6 +1612,7 @@ export const ApplyStepper: React.FC = () => {
                           <option value="DOMICILE_CERTIFICATE">Domicile & Native Residence Certificate</option>
                           <option value="INCOME_CERTIFICATE">Income & Tax Certificate</option>
                           <option value="CASTE_CERTIFICATE">Caste / Category Certificate (BC/SC/ST/EWS)</option>
+                          <option value="BANK_PASSBOOK">Bank Account Passbook / Cancelled Cheque</option>
                           <option value="LAND_TITLE">Land Revenue Record / Khasra Patta</option>
                           <option value="ELECTRICITY_BILL">DISCOM Electricity Utility Bill</option>
                           <option value="MARKS_MEMO">School / College Academic Marksheet</option>

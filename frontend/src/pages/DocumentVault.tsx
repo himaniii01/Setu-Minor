@@ -202,8 +202,8 @@ export const DocumentVault: React.FC = () => {
     },
     {
       doc_id: 'doc-114',
-      doc_type: 'SOLAR_PASSBOOK',
-      doc_name: isHindi ? 'पीएम सूर्य घर मुफ्त बिजली उपभोक्ता आईडी' : 'PM Surya Ghar Solar Electricity Passbook',
+      doc_type: 'SOLAR_CONSUMER_ID',
+      doc_name: isHindi ? 'पीएम सूर्य घर मुफ्त बिजली उपभोक्ता आईडी' : 'PM Surya Ghar Solar Electricity Consumer Card',
       issuer_org: 'Ministry of New & Renewable Energy (MNRE)',
       uri_reference: 'https://pmsuryaghar.gov.in/verify/SOL3398',
       is_verified: true,
