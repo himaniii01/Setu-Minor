@@ -19,6 +19,8 @@ interface DocumentRecord {
   uploaded_at: string;
   category: 'IDENTITY' | 'INCOME' | 'EDUCATION' | 'TRANSPORT' | 'HOUSING' | 'HEALTH';
   doc_number?: string;
+  file_url?: string;
+  file_type?: 'pdf' | 'image' | 'certificate';
 }
 export const DocumentVault: React.FC = () => {
   const { i18n } = useTranslation();
@@ -37,6 +39,7 @@ export const DocumentVault: React.FC = () => {
 
   // Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
+  const [previewFormat, setPreviewFormat] = useState<'pdf' | 'card' | 'image'>('pdf');
 
   // Add Document Modal State
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -45,6 +48,8 @@ export const DocumentVault: React.FC = () => {
   const [newName, setNewName] = useState<string>('');
   const [newIssuer, setNewIssuer] = useState<string>('');
   const [newDocNumber, setNewDocNumber] = useState<string>('');
+  const [newFileUrl, setNewFileUrl] = useState<string>('');
+  const [newFileType, setNewFileType] = useState<'pdf' | 'image' | 'certificate'>('certificate');
 
   const categories = [
     { id: 'ALL', label: isHindi ? 'सभी दस्तावेज़' : 'All Documents', icon: FolderOpen },
@@ -213,16 +218,34 @@ export const DocumentVault: React.FC = () => {
     }
   ];
 
+  // Prevent background-page scrolling while modal is open, and restore when closed
   useEffect(() => {
-    if (previewDoc) {
+    const isModalOpen = Boolean(previewDoc || showAddModal);
+    if (isModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      const originalPaddingRight = document.body.style.paddingRight;
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      if (scrollBarWidth > 0) {
+        document.body.style.paddingRight = `${scrollBarWidth}px`;
+      }
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          if (previewDoc) setPreviewDoc(null);
+          if (showAddModal) setShowAddModal(false);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalOverflow || '';
+        document.body.style.paddingRight = originalPaddingRight || '';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [previewDoc]);
+  }, [previewDoc, showAddModal]);
 
   useEffect(() => {
     fetchDocs();
@@ -309,6 +332,38 @@ Notice: Official digital government document reference copy.
     }, 1800);
   };
 
+  const openPreview = (doc: DocumentRecord) => {
+    setPreviewDoc(doc);
+    if (doc.file_type === 'image') {
+      setPreviewFormat('image');
+    } else if (doc.file_type === 'pdf') {
+      setPreviewFormat('pdf');
+    } else if (doc.doc_type === 'AADHAAR' || doc.doc_type === 'PAN_CARD') {
+      setPreviewFormat('card');
+    } else {
+      setPreviewFormat('pdf');
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === 'application/pdf') {
+      setNewFileType('pdf');
+    } else if (file.type.startsWith('image/')) {
+      setNewFileType('image');
+    } else {
+      setNewFileType('certificate');
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewFileUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleAddDocumentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
@@ -322,7 +377,9 @@ Notice: Official digital government document reference copy.
       is_verified: true,
       uploaded_at: new Date().toISOString().split('T')[0],
       category: newCategory,
-      doc_number: newDocNumber || `DOC-${Math.floor(100000 + Math.random() * 900000)}`
+      doc_number: newDocNumber || `DOC-${Math.floor(100000 + Math.random() * 900000)}`,
+      file_url: newFileUrl || undefined,
+      file_type: newFileType
     };
 
     setDocuments((prev) => [newDoc, ...prev]);
@@ -330,6 +387,8 @@ Notice: Official digital government document reference copy.
     setNewName('');
     setNewIssuer('');
     setNewDocNumber('');
+    setNewFileUrl('');
+    setNewFileType('certificate');
     showToast('Document Saved', 'Official document added to your SETU Organizer.', 'success');
   };
 
@@ -552,7 +611,7 @@ Notice: Official digital government document reference copy.
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => setPreviewDoc(doc)}
+                          onClick={() => openPreview(doc)}
                           className="p-2 rounded-xl bg-slate-100 hover:bg-[#08234D] hover:text-white text-slate-700 transition-colors flex items-center gap-1 text-[11px] font-bold px-3"
                           title="Preview Document"
                         >
@@ -637,199 +696,432 @@ Notice: Official digital government document reference copy.
         </div>
       )}
 
-      {/* DOCUMENT PREVIEW MODAL - PINNED TO VIEWPORT CENTER */}
+      {/* DOCUMENT PREVIEW MODAL - PINNED & CENTERED IN VIEWPORT */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-955/90 backdrop-blur-md animate-fadeIn overflow-hidden">
-          <div className="relative bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 max-h-[85vh] flex flex-col shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-[#08234D]/60 backdrop-blur-sm animate-fadeIn overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewDoc(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preview-doc-title"
+        >
+          <div
+            className="relative bg-white w-full max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             
-            <div className="bg-[#08234D] text-white p-5 flex items-center justify-between border-b border-amber-500/30 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+            {/* 1. Modal Fixed Header (Always visible) */}
+            <div className="shrink-0 bg-[#08234D] text-white p-4 sm:p-5 flex items-center justify-between border-b border-amber-500/30 z-20">
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-white">{previewDoc.doc_name}</h3>
-                  <p className="text-xs text-amber-300 font-mono">Ref: {previewDoc.doc_number || 'SETU-DOC-2026-9812'}</p>
+                <div className="min-w-0">
+                  <h3 id="preview-doc-title" className="font-extrabold text-sm sm:text-base text-white truncate">
+                    {previewDoc.doc_name}
+                  </h3>
+                  <p className="text-xs text-amber-300 font-mono truncate">
+                    Ref: {previewDoc.doc_number || 'SETU-DOC-2026-9812'} • {previewDoc.issuer_org}
+                  </p>
                 </div>
               </div>
+
               <button
                 onClick={() => setPreviewDoc(null)}
-                className="p-1.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                aria-label="Close Preview"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+            {/* 2. Format Switcher Bar (Always visible) */}
+            <div className="shrink-0 bg-slate-100 border-b border-slate-200 px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 z-10">
+              <div className="flex items-center gap-1.5 bg-slate-200/90 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setPreviewFormat('pdf')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    previewFormat === 'pdf'
+                      ? 'bg-[#08234D] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  PDF Document View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewFormat('card')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    previewFormat === 'card'
+                      ? 'bg-[#08234D] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  Smart e-Card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewFormat('image')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    previewFormat === 'image'
+                      ? 'bg-[#08234D] text-white shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  Image Scan
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-slate-600 font-semibold">
+                <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Govt Digital Signature Verified</span>
+                </span>
+                <span className="hidden sm:inline text-slate-400">|</span>
+                <span className="hidden sm:inline font-mono">256-bit SHA</span>
+              </div>
+            </div>
+
+            {/* 3. Document Preview Area - Scrollable INSIDE the remaining space */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 bg-slate-50/80">
               
-              {/* 1. DEMO AADHAAR CARD PREVIEW LAYOUT */}
-              {previewDoc.doc_type === 'AADHAAR' ? (
-                <div className="bg-gradient-to-b from-amber-500/10 via-white to-emerald-500/10 border-2 border-amber-400/40 rounded-3xl p-6 shadow-md space-y-5 relative overflow-hidden">
-                  
-                  {/* Top Saffron/White/Green Republic Header */}
-                  <div className="flex items-center justify-between border-b-2 border-[#08234D]/20 pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-[#08234D] flex items-center justify-center border border-amber-400">
-                        <img src="/india_gov_emblem.jpg" alt="" className="w-full h-full object-cover scale-125" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-black text-[#08234D] tracking-wide">भारत सरकार • GOVERNMENT OF INDIA</p>
-                        <p className="text-[10px] text-slate-600 font-bold">भारतीय विशिष्ट पहचान प्राधिकरण (UIDAI)</p>
-                      </div>
-                    </div>
-                    <span className="text-[9px] font-extrabold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-                      ✓ e-KYC Verified
-                    </span>
+              {/* FORMAT 1: PDF DOCUMENT PREVIEW */}
+              {previewFormat === 'pdf' && (
+                previewDoc.file_url && previewDoc.file_type === 'pdf' ? (
+                  <div className="w-full h-full min-h-[460px] rounded-2xl overflow-hidden border border-slate-300 shadow-md bg-white">
+                    <iframe
+                      src={previewDoc.file_url}
+                      className="w-full h-full min-h-[460px] border-0"
+                      title="PDF Document Preview"
+                    />
                   </div>
+                ) : (
+                  /* Authentic Government PDF Sheet */
+                  <div className="max-w-2xl mx-auto bg-white border border-slate-300 rounded-2xl p-6 sm:p-10 shadow-lg space-y-6 relative overflow-hidden text-slate-800">
+                    {/* Centered Watermark */}
+                    <div 
+                      className="absolute inset-0 bg-contain bg-no-repeat bg-center opacity-[0.035] pointer-events-none select-none"
+                      style={{ backgroundImage: `url('/india_gov_emblem.jpg')` }}
+                    />
 
-                  {/* Citizen Identity Content */}
-                  <div className="grid grid-cols-3 gap-4 items-center">
-                    
-                    {/* Photo Box */}
-                    <div className="col-span-1 flex flex-col items-center">
-                      <div className="w-24 h-28 rounded-2xl border-2 border-[#08234D]/40 shadow-md relative overflow-hidden bg-[#08234D] text-amber-400 flex flex-col items-center justify-center pt-2">
-                        <User className="w-12 h-12 text-amber-400 mb-4" />
-                        <span className="text-[9px] font-extrabold bg-[#08234D] text-amber-300 w-full text-center py-0.5 absolute bottom-0 uppercase tracking-wider border-t border-amber-400/30">
-                          UIDAI e-KYC
-                        </span>
+                    {/* Official Document Header */}
+                    <div className="relative z-10 border-b-2 border-slate-200 pb-5 text-center space-y-2">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[#08234D] border-2 border-amber-400 mx-auto flex items-center justify-center shadow-xs">
+                        <img src="/india_gov_emblem.jpg" alt="Government Emblem" className="w-full h-full object-cover scale-125" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black tracking-widest text-[#08234D] uppercase">
+                          भारत सरकार • GOVERNMENT OF INDIA
+                        </p>
+                        <h4 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
+                          {previewDoc.issuer_org}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 font-semibold">
+                          National Digital Verified Certificate Repository • IT Act 2000
+                        </p>
+                      </div>
+
+                      <div className="h-1 bg-gradient-to-r from-amber-500 via-slate-300 to-emerald-600 rounded-full mx-auto w-48 mt-2" />
+                    </div>
+
+                    {/* Certificate Badge Banner */}
+                    <div className="relative z-10 bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-center space-y-1">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800">
+                        OFFICIAL STATUTORY DIGITAL CREDENTIAL
+                      </p>
+                      <h3 className="text-base sm:text-lg font-extrabold text-[#08234D]">
+                        {previewDoc.doc_name}
+                      </h3>
+                      <p className="font-mono text-xs text-amber-900 font-bold">
+                        Certificate Identifier: {previewDoc.doc_number || 'SETU-2026-981240'}
+                      </p>
+                    </div>
+
+                    {/* Document Particulars Table */}
+                    <div className="relative z-10 bg-slate-50/70 border border-slate-200 rounded-xl overflow-hidden text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+                        <div className="p-3.5 space-y-2">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Beneficiary Name</span>
+                            <span className="font-extrabold text-[#08234D] text-sm">Rajesh Kumar / राजेश कुमार</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Father / Guardian</span>
+                            <span className="font-bold text-slate-800">Suresh Kumar</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Category / Type</span>
+                            <span className="font-bold text-slate-800">{previewDoc.category}</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 space-y-2">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Issuance Date</span>
+                            <span className="font-mono font-bold text-slate-800">{previewDoc.uploaded_at}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Issuing Authority</span>
+                            <span className="font-bold text-slate-800 truncate block">{previewDoc.issuer_org}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Verification Status</span>
+                            <span className="font-extrabold text-emerald-700 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Valid & Authenticated</span>
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Particulars Details */}
-                    <div className="col-span-2 space-y-1.5 text-xs text-slate-900">
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Name / नाम</p>
-                        <p className="font-extrabold text-sm text-[#08234D]">Rajesh Kumar / राजेश कुमार</p>
+                    {/* Digital Signature & Cryptographic Seal */}
+                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center pt-2">
+                      <div className="sm:col-span-2 p-3.5 bg-emerald-50/80 border border-emerald-300 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>Digitally Signed by Govt Certifying Authority (CCA)</span>
+                        </div>
+                        <p className="text-[10px] text-emerald-900 font-mono leading-tight">
+                          Signer: SETU National Interoperability CA<br />
+                          Hash: SHA-256 e48f98...91a20c<br />
+                          Status: Cryptographically Verified
+                        </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase">DOB / जन्म तिथि</p>
-                          <p className="font-extrabold text-xs">15/08/1995</p>
+                      <div className="sm:col-span-1 p-3 bg-white border border-slate-200 rounded-xl text-center space-y-1 shadow-xs">
+                        <div className="w-14 h-14 bg-slate-900 text-white rounded-lg mx-auto flex items-center justify-center font-mono text-[9px] font-bold">
+                          [QR CODE]
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase">Gender / लिंग</p>
-                          <p className="font-extrabold text-xs">Male / पुरुष</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Address / पता</p>
-                        <p className="text-[11px] font-semibold text-slate-700 leading-tight">
-                          House 142, Sector 4, Central District, New Delhi - 110001
+                        <p className="text-[9px] font-bold text-slate-500 uppercase">
+                          Scan to Verify
                         </p>
                       </div>
                     </div>
 
+                    {/* Bottom Legal Notice */}
+                    <div className="relative z-10 border-t border-slate-200 pt-3 text-center text-[10px] text-slate-500 space-y-0.5">
+                      <p>This is a certified digital government document issued under Section 4 & 5 of the Information Technology Act 2000.</p>
+                      <p className="font-mono text-[9px] text-slate-400">SETU Vault URI: {previewDoc.uri_reference}</p>
+                    </div>
                   </div>
+                )
+              )}
 
-                  {/* Aadhaar 12-Digit Number Strip */}
-                  <div className="bg-[#08234D] text-amber-300 p-3 rounded-2xl text-center space-y-1 shadow-sm">
-                    <p className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest">Aadhaar Number / आधार क्रमांक</p>
-                    <p className="text-xl sm:text-2xl font-black font-mono tracking-widest text-amber-300">
-                      5489 1234 9821
-                    </p>
-                  </div>
+              {/* FORMAT 2: SMART E-CARD PREVIEW */}
+              {previewFormat === 'card' && (
+                <div className="max-w-xl mx-auto space-y-4">
+                  {previewDoc.doc_type === 'AADHAAR' ? (
+                    <div className="bg-gradient-to-b from-amber-500/10 via-white to-emerald-500/10 border-2 border-amber-400/40 rounded-3xl p-6 shadow-md space-y-5 relative overflow-hidden">
+                      {/* Top Saffron/White/Green Republic Header */}
+                      <div className="flex items-center justify-between border-b-2 border-[#08234D]/20 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-[#08234D] flex items-center justify-center border border-amber-400">
+                            <img src="/india_gov_emblem.jpg" alt="" className="w-full h-full object-cover scale-125" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-[#08234D] tracking-wide">भारत सरकार • GOVERNMENT OF INDIA</p>
+                            <p className="text-[10px] text-slate-600 font-bold">भारतीय विशिष्ट पहचान प्राधिकरण (UIDAI)</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-extrabold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                          ✓ e-KYC Verified
+                        </span>
+                      </div>
 
-                  {/* Card Bottom Motto */}
-                  <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-600 border-t border-slate-200 pt-2">
-                    <span>मेरा आधार, मेरी पहचान</span>
-                    <span>UIDAI Digital Vault Copy</span>
-                  </div>
+                      {/* Citizen Identity Content */}
+                      <div className="grid grid-cols-3 gap-4 items-center">
+                        <div className="col-span-1 flex flex-col items-center">
+                          <div className="w-24 h-28 rounded-2xl border-2 border-[#08234D]/40 shadow-md relative overflow-hidden bg-[#08234D] text-amber-400 flex flex-col items-center justify-center pt-2">
+                            <User className="w-12 h-12 text-amber-400 mb-4" />
+                            <span className="text-[9px] font-extrabold bg-[#08234D] text-amber-300 w-full text-center py-0.5 absolute bottom-0 uppercase tracking-wider border-t border-amber-400/30">
+                              UIDAI e-KYC
+                            </span>
+                          </div>
+                        </div>
 
-                </div>
-              ) : previewDoc.doc_type === 'PAN_CARD' ? (
-                /* 2. DEMO PAN CARD PREVIEW LAYOUT */
-                <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-6 shadow-md space-y-4 border-2 border-amber-400/40 relative">
-                  <div className="flex items-center justify-between border-b border-white/20 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center">
-                        <img src="/india_gov_emblem.jpg" alt="" className="w-full h-full object-cover scale-125 rounded-full" />
+                        <div className="col-span-2 space-y-1.5 text-xs text-slate-900">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase">Name / नाम</p>
+                            <p className="font-extrabold text-sm text-[#08234D]">Rajesh Kumar / राजेश कुमार</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">DOB / जन्म तिथि</p>
+                              <p className="font-extrabold text-xs">15/08/1995</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">Gender / लिंग</p>
+                              <p className="font-extrabold text-xs">Male / पुरुष</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase">Address / पता</p>
+                            <p className="text-[11px] font-semibold text-slate-700 leading-tight">
+                              House 142, Sector 4, Central District, New Delhi - 110001
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Aadhaar 12-Digit Number Strip */}
+                      <div className="bg-[#08234D] text-amber-300 p-3 rounded-2xl text-center space-y-1 shadow-sm">
+                        <p className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest">Aadhaar Number / आधार क्रमांक</p>
+                        <p className="text-xl sm:text-2xl font-black font-mono tracking-widest text-amber-300">
+                          5489 1234 9821
+                        </p>
+                      </div>
+
+                      {/* Card Bottom Motto */}
+                      <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-600 border-t border-slate-200 pt-2">
+                        <span>मेरा आधार, मेरी पहचान</span>
+                        <span>UIDAI Digital Vault Copy</span>
+                      </div>
+                    </div>
+                  ) : previewDoc.doc_type === 'PAN_CARD' ? (
+                    <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-6 shadow-md space-y-4 border-2 border-amber-400/40 relative">
+                      <div className="flex items-center justify-between border-b border-white/20 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center">
+                            <img src="/india_gov_emblem.jpg" alt="" className="w-full h-full object-cover scale-125 rounded-full" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-amber-400 uppercase tracking-wider">INCOME TAX DEPARTMENT</p>
+                            <p className="text-[9px] text-slate-300 font-bold">GOVT OF INDIA • आयकर विभाग</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono bg-amber-400 text-slate-950 px-2 py-0.5 rounded font-black">
+                          PERMANENT ACCOUNT CARD
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 font-mono">
+                        <div>
+                          <p className="text-[9px] text-slate-400 uppercase">PAN Number</p>
+                          <p className="text-2xl font-black tracking-widest text-amber-300">ABCDE1234F</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="text-[9px] text-slate-400 uppercase">Name</p>
+                            <p className="font-bold">RAJESH KUMAR</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-400 uppercase">Father's Name</p>
+                            <p className="font-bold">SURESH KUMAR</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[9px] text-slate-400 uppercase">Date of Birth</p>
+                          <p className="font-bold text-xs">15/08/1995</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-white border-2 border-slate-300 rounded-3xl text-center space-y-4 relative shadow-md">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 mx-auto">
+                        <ShieldCheck className="w-7 h-7" />
                       </div>
                       <div>
-                        <p className="text-xs font-black text-amber-400 uppercase tracking-wider">INCOME TAX DEPARTMENT</p>
-                        <p className="text-[9px] text-slate-300 font-bold">GOVT OF INDIA • आयकर विभाग</p>
+                        <h4 className="font-extrabold text-base text-slate-900">{previewDoc.doc_name}</h4>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          Issuing Authority: <strong>{previewDoc.issuer_org}</strong>
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-2 text-xs">
+                        <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                          <span className="text-slate-500 font-medium">Certificate Ref ID:</span>
+                          <span className="font-mono font-bold text-amber-700">{previewDoc.doc_number || 'SETU-DOC-2026-8819'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                          <span className="text-slate-500 font-medium">Holder Name:</span>
+                          <span className="font-bold text-slate-900">Rajesh Kumar</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                          <span className="text-slate-500 font-medium">Verification Seal:</span>
+                          <span className="font-bold text-emerald-700">✓ Govt Digital Signature Verified</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-medium">Encryption Standard:</span>
+                          <span className="font-mono text-[11px] text-slate-600">256-Bit SHA Certificate</span>
+                        </div>
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono bg-amber-400 text-slate-950 px-2 py-0.5 rounded font-black">
-                      PERMANENT ACCOUNT CARD
-                    </span>
-                  </div>
-
-                  <div className="space-y-3 font-mono">
-                    <div>
-                      <p className="text-[9px] text-slate-400 uppercase">PAN Number</p>
-                      <p className="text-2xl font-black tracking-widest text-amber-300">ABCDE1234F</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <p className="text-[9px] text-slate-400 uppercase">Name</p>
-                        <p className="font-bold">RAJESH KUMAR</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-slate-400 uppercase">Father's Name</p>
-                        <p className="font-bold">SURESH KUMAR</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-[9px] text-slate-400 uppercase">Date of Birth</p>
-                      <p className="font-bold text-xs">15/08/1995</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* 3. GENERAL OFFICIAL GOVERNMENT CERTIFICATE LAYOUT */
-                <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-300 rounded-3xl text-center space-y-4 relative">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 mx-auto">
-                    <ShieldCheck className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-base text-slate-900">{previewDoc.doc_name}</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Issuing Authority: <strong>{previewDoc.issuer_org}</strong>
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200 text-left space-y-2 text-xs">
-                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                      <span className="text-slate-500 font-medium">Certificate Ref ID:</span>
-                      <span className="font-mono font-bold text-amber-700">{previewDoc.doc_number || 'SETU-DOC-2026-8819'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                      <span className="text-slate-500 font-medium">Holder Name:</span>
-                      <span className="font-bold text-slate-900">Rajesh Kumar</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                      <span className="text-slate-500 font-medium">Verification Seal:</span>
-                      <span className="font-bold text-emerald-700">✓ Govt Digital Signature Verified</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-medium">Encryption Standard:</span>
-                      <span className="font-mono text-[11px] text-slate-600">256-Bit SHA Certificate</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {/* Action Buttons Footer */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              {/* FORMAT 3: IMAGE SCAN PREVIEW */}
+              {previewFormat === 'image' && (
+                <div className="max-w-2xl mx-auto flex flex-col items-center justify-center p-2">
+                  {previewDoc.file_url && previewDoc.file_type === 'image' ? (
+                    <img
+                      src={previewDoc.file_url}
+                      alt={previewDoc.doc_name}
+                      className="max-h-[55vh] max-w-full object-contain mx-auto rounded-2xl shadow-md border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-full bg-white p-4 sm:p-6 rounded-2xl border border-slate-300 shadow-md space-y-3 text-center">
+                      <div className="relative inline-block overflow-hidden rounded-xl border border-slate-200 shadow-xs max-w-full">
+                        <img
+                          src="/india_gov_emblem.jpg"
+                          alt="Official Scan Watermark"
+                          className="max-h-[50vh] max-w-full object-contain mx-auto opacity-90"
+                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40 text-white p-4 text-center">
+                          <ShieldCheck className="w-12 h-12 text-emerald-400 mb-2" />
+                          <p className="font-black text-sm uppercase tracking-wider">
+                            AUTHENTIC HIGH-RESOLUTION DOCUMENT SCAN
+                          </p>
+                          <p className="text-xs text-slate-200 font-mono mt-1">
+                            {previewDoc.doc_name} • {previewDoc.doc_number || 'SETU-2026-9812'}
+                          </p>
+                          <span className="mt-3 bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded-full">
+                            100% Scaled Visual • No Cropping
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">
+                        High-resolution 300 DPI verified document scan archive
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+
+            {/* 4. Modal Fixed Footer (Always visible) */}
+            <div className="shrink-0 bg-white border-t border-slate-200 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 z-10">
+              <div className="text-xs text-slate-500 font-medium hidden sm:flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Official MeitY & DigiLocker Interoperability Verified</span>
+              </div>
+
+              <div className="flex items-center gap-2.5 ml-auto">
                 <button
+                  type="button"
                   onClick={() => setPreviewDoc(null)}
-                  className="px-5 py-2.5 rounded-xl text-xs font-extrabold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-extrabold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Close Preview
                 </button>
                 <button
+                  type="button"
                   onClick={() => downloadSamplePdf(previewDoc)}
-                  className="bg-[#08234D] hover:bg-[#0F346C] text-white text-xs font-extrabold px-6 py-2.5 rounded-xl shadow-md transition-colors flex items-center gap-2"
+                  className="bg-[#08234D] hover:bg-[#0F346C] text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2 border border-amber-500/30"
                 >
                   <Download className="w-4 h-4 text-amber-400" />
                   <span>Download Reference File</span>
                 </button>
               </div>
-
             </div>
 
           </div>
@@ -838,22 +1130,34 @@ Notice: Official digital government document reference copy.
 
       {/* UPLOAD & ORGANIZE NEW DOCUMENT MODAL */}
       {showAddModal && (
-        <div className="modal-backdrop z-50">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-modal overflow-hidden animate-fadeIn border border-slate-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-[#08234D]/60 backdrop-blur-sm animate-fadeIn overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddModal(false);
+          }}
+        >
+          <div
+            className="relative bg-white w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             
-            <div className="bg-[#08234D] text-white p-5 flex items-center justify-between">
+            <div className="shrink-0 bg-[#08234D] text-white p-5 flex items-center justify-between border-b border-amber-500/30">
               <div className="flex items-center gap-2.5">
                 <Plus className="w-6 h-6 text-amber-400" />
                 <h3 className="font-extrabold text-base">
                   {isHindi ? 'नया दस्तावेज़ व्यवस्थित करें' : 'Organize New Official Document'}
                 </h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-300 hover:text-white">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-slate-300 hover:text-white"
+                aria-label="Close modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddDocumentSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleAddDocumentSubmit} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 mb-1">
                   Document Category <span className="text-rose-500">*</span>
@@ -911,6 +1215,21 @@ Notice: Official digital government document reference copy.
                   placeholder="e.g. CERT-2026-99120"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#08234D]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1">
+                  Upload Document File (PDF or Image)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,image/*"
+                  onChange={handleFileUpload}
+                  className="w-full px-3 py-2 text-xs font-medium text-slate-600 border border-slate-300 rounded-xl bg-slate-50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#08234D] file:text-white hover:file:bg-[#0F346C]"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Supports PDF, PNG, JPG files up to 10MB
+                </p>
               </div>
 
               <div className="pt-2">
